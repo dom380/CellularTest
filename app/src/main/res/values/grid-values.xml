@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="gridWith" type="integer" format="integer">50</item>
+    <item name="gridHeight" type="integer" format="integer">50</item>
+    <item name="seedPercentage" type="fraction">45%</item>
+    <!--<item name="seedPercentage" type="dimen" format="float">0.5</item>-->
+</resources>
