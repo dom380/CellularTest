@@ -248,7 +248,8 @@ public class Grid {
         if ((x < 0) || (x >= gridWidth)) {
             int check = 1;
             return false;
-        } else if ((y < 0) || (y >= gridHeight)) {
+        }
+        if ((y < 0) || (y >= gridHeight)) {
             int check = 1;
             return false;
         }
@@ -400,54 +401,38 @@ public class Grid {
                 if (walkable(x + dx, y)) {
                     neighbors.add(new Position(x + dx, y));
                 }
-                if (walkable(x + dx, y + dy)) {
+                if (walkable(x, y + dy) || walkable(x + dx, y)) {
                     neighbors.add(new Position(x + dx, y + dy));
                 }
-                if (!walkable(x - dx, y)) {
+                if (!walkable(x - dx, y) && walkable(x, y + dy)) {
                     neighbors.add(new Position(x - dx, y + dy));
                 }
-                if (!walkable(x, y - dy)) {
+                if (!walkable(x, y - dy) && walkable(x + dx, y)) {
                     neighbors.add(new Position(x + dx, y - dy));
                 }
             } else {
                 if (dx == 0) {
                     if (walkable(x, y + dy)) {
                         neighbors.add(new Position(x, y + dy));
+
+                        if (!walkable(x + 1, y)) {
+                            neighbors.add(new Position(x + 1, y + dy));
+                        }
+                        if (!walkable(x - 1, y)) {
+                            neighbors.add(new Position(x - 1, y + dy));
+                        }
                     }
-                    if (!walkable(x + 1, y)) {
-                        neighbors.add(new Position(x + 1, y + dy));
-                    }
-                    if (!walkable(x - 1, y)) {
-                        neighbors.add(new Position(x - 1, y + dy));
-                    }
-//                    }
-//                    if (!moveDiag) {
-//                        if (walkable(x + 1, y)) {
-//                            neighbors.add(cells[y][x + 1]);
-//                        }
-//                        if (walkable(x - 1, y)) {
-//                            neighbors.add(cells[y][x - 1]);
-//                        }
-//                    }
                 } else {
                     if (walkable(x + dx, y)) {
                         neighbors.add(new Position(x + dx, y));
+
+                        if (!walkable(x, y + 1)) {
+                            neighbors.add(new Position(x + dx, y + 1));
+                        }
+                        if (!walkable(x, y - 1)) {
+                            neighbors.add(new Position(x + dx, y - 1));
+                        }
                     }
-                    if (!walkable(x, y + 1)) {
-                        neighbors.add(new Position(x + dx, y + 1));
-                    }
-                    if (!walkable(x, y - 1)) {
-                        neighbors.add(new Position(x + dx, y - 1));
-                    }
-//                    }
-//                    if (!moveDiag) {
-//                        if (walkable(x, y + 1)) {
-//                            neighbors.add(cells[y + 1][x]);
-//                        }
-//                        if (walkable(x, y - 1)) {
-//                            neighbors.add(cells[y - 1][x]);
-//                        }
-//                    }
                 }
             }
             return neighbors;
@@ -486,17 +471,6 @@ public class Grid {
         return (dX + dY);
     }
 
-//    private double heuristic(Position curr, Position start, Position goal){
-//        double heuristic = manhatDist(curr, goal);
-//        double dx1 = curr.x - goal.x;
-//        double dy1 = curr.y - goal.y;
-//        double dx2 = start.x - goal.x;
-//        double dy2 = start.y - goal.y;
-//        double cross = Math.abs(dx1*dy2 - dx2*dy1);
-//        heuristic += cross*0.001;
-//        return heuristic;
-//    }
-
     private List<Cell> rebuildPath(Map<Cell, Cell> cameFrom, Cell current) {
         path.clear();
         Cell startCell = cells[startPos.y][startPos.x];
@@ -533,7 +507,7 @@ public class Grid {
         for (int row = 0; row < gridHeight; row++) {
             for (int col = 0; col < gridWidth; col++) {
                 cells[row][col].reset();
-                if (cells[row][col].cellType == CellType.VISITED)
+                if (cells[row][col].cellType == CellType.VISITED || cells[row][col].cellType == CellType.PATH)
                     cells[row][col].cellType = CellType.FLOOR;
             }
         }
@@ -569,7 +543,9 @@ public class Grid {
                 //neighbour.updateScore(gScore, diagonalDist(neighbour.position, endPos), current);
                 neighbour.updateScore(gScore, manhatDist(neighbour.position, endPos), current);
                 if (!frontier.contains(neighbour)) { //Not encountered this node before.
-                    neighbour.cellType = CellType.VISITED;
+                    if (neighbour.cellType != CellType.GOAL) {
+                        neighbour.cellType = CellType.VISITED;
+                    }
                     frontier.add(new LIFOEntry<>(neighbour));
                 }
                 cameFrom.put(neighbour, current);
@@ -615,9 +591,11 @@ public class Grid {
 //                        jumpNode.updateScore(gScore, manhatDist(jumpNode.position, endPos), null);
                         jumpNode.updateScore(gScore, diagonalDist(jumpNode.position, endPos), null);
                     }
-                    LIFOEntry<Cell> jumpEntry =  new LIFOEntry<Cell>(jumpNode);
+                    LIFOEntry<Cell> jumpEntry = new LIFOEntry<Cell>(jumpNode);
                     if (!frontier.contains(jumpEntry)) {
-                        neighbour.cellType = CellType.VISITED;
+                        if (neighbour.cellType != CellType.GOAL) {
+                            neighbour.cellType = CellType.VISITED;
+                        }
                         frontier.add(jumpEntry);
                     }
                     cameFrom.put(jumpNode, current);
@@ -648,7 +626,7 @@ public class Grid {
                     (walkable(x + dx, y - dy) && !walkable(x, y - dy))) {  //if we find a forced neighbor here, we are on a jump point, and we return the current position
                 return node;
             }
-            if (jumpNoObs(new Position(x + dx, y), node, goal) != null || jumpAlwaysDiag(new Position(x, y + dy), node, goal) != null) {
+            if (jumpNoObs(new Position(x + dx, y), node, goal) != null || jumpNoObs(new Position(x, y + dy), node, goal) != null) {
                 return node;
             }
         } else { //Check horizontal and vertical
@@ -669,7 +647,6 @@ public class Grid {
         } else {
             return null;
         }
-//        return jumpNoObs(new Position(x + dx, y + dy), node, goal);
     }
 
     private Cell jumpAlwaysDiag(Position nodePos, Cell parent, Cell goal) {
@@ -709,67 +686,4 @@ public class Grid {
         }
         return jumpAlwaysDiag(new Position(x + dx, y + dy), node, goal);
     }
-//Old jump impl
-//    private Cell jump(Position nodePos, Cell parent, Cell goal, boolean moveDiag) {
-//        if (!walkable(nodePos.x, nodePos.y)) { //If space isn't walkable return null
-//            return null;
-//        }
-//        Cell node = cells[nodePos.y][nodePos.x];
-//        node.parent = parent;
-//        if (nodePos.equals(goal.position)) { //If end point, return it. Search over.
-//            return node;
-//        }
-//        //get the normalized direction of travel
-//        int x = node.position.x, y = node.position.y;
-//        int dx = (node.position.x - parent.position.x) / Math.max(Math.abs(node.position.x - parent.position.x), 1);
-//        int dy = (node.position.y - parent.position.y) / Math.max(Math.abs(node.position.y - parent.position.y), 1);
-//
-//        if (dx != 0 && dy != 0) { //If x and y have changed we're moving diagonally. Check for forced neighbours
-//            if ((walkable(x - dx, y + dy) && !walkable(x - dx, y)) || //we are moving diagonally, don't check the parent, or our next diagonal step, but the other diagonals
-//                    (walkable(x + dx, y - dy) && !walkable(x, y - dy))) {  //if we find a forced neighbor here, we are on a jump point, and we return the current position
-//                return node;
-//            }
-//        } else { //Check horizontal and vertical
-//            if (dx != 0) { //Moving in X
-//                if (moveDiag) {
-//                    if ((walkable(x + dx, y + 1) && !walkable(x, y + 1)) ||
-//                            (walkable(x + dx, y - 1) && !walkable(x, y - 1))) {
-//                        return node;
-//                    }
-//                } else {
-//                    if (walkable(x + 1, y) || walkable(x - 1, y)) {
-//                        return node;
-//                    }
-//                }
-//            } else {
-//                if (moveDiag) {
-//                    if ((walkable(x + 1, y + dy) && !walkable(x + 1, y)) ||
-//                            (walkable(x - 1, y + dy) && !walkable(x - 1, y))) {
-//                        return node;
-//                    }
-//                } else {
-//                    if (walkable(x, y + 1) || walkable(x, y - 1)) {
-//                        return node;
-//                    }
-//                }
-//            }
-//        }
-//        if (dx != 0 && dy != 0) { //Recursive horizontal/vertical search
-//            Cell jumpHoz = jump(new Position(x + dx, y), node, goal, moveDiag);
-//            if (jumpHoz != null) {
-//                return node;
-//            }
-//            Cell jumpVert = jump(new Position(x, y + dy), node, goal, moveDiag);
-//            if (jumpVert != null) {
-//                return node;
-//            }
-//        }
-//        if (moveDiag) {
-//            if (walkable(x + dx, y) || walkable(x, y + dy)) {
-//                return jump(new Position(x + dx, y + dy), node, goal, true);
-//            } else
-//                return null;
-//        }
-//        return null;
-//    }
 }
